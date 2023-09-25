@@ -8,6 +8,10 @@
 
 #define BUF_SIZE 100
 
+void printCurrentLocation(char *str, int fd) {
+    printf("%s, ", str);
+    printf("current location: %ld\n", lseek(fd, 0, SEEK_CUR));
+}
 
 int main(int argc, char *argv[]) {
     int opt;
@@ -15,6 +19,7 @@ int main(int argc, char *argv[]) {
     int num = 10;
     int newLinesRead = 0;
     char buf[BUF_SIZE];
+    char buf2[BUF_SIZE];
     int fileSize;
     int offset = 0;
 
@@ -29,7 +34,7 @@ int main(int argc, char *argv[]) {
     if( (opt = getopt(argc, argv, "n:")) != -1 ) {
         switch(opt) {
             case 'n':
-                num = atoi(optarg);
+                num = atoi(optarg) + 1;
                 printf("num: %d\n", num);
                 break;          
             default:
@@ -44,42 +49,73 @@ int main(int argc, char *argv[]) {
         return 0;
     }
 
-    // set the offset to the end of the file
+    // move file pointer to the end of the file
     // if lseek failed, returns -1
-    if ((fileSize = lseek(fd, 0, SEEK_END)) == 0) {
-        perror("lseek error: ");
+    if ((fileSize = lseek(fd, 0, SEEK_END)) == -1) {
+        perror("lseek error1: ");
         return 0;
     }
+    printCurrentLocation("after file size", fd);
 
-    while(fileSize) {
+    while(1) {
+        // move file pointer
         if(fileSize <= BUF_SIZE) {
-            lseek(fd, 0, SEEK_SET);
+            // move file pointer to the front
+            if(lseek(fd, 0, SEEK_SET) == -1) {
+                perror("lseek error2: ");
+                return 0;
+            }
+            printCurrentLocation("file size not enouge", fd);
         } else {
-            fileSize -= BUF_SIZE;
-            lseek(fd, -BUF_SIZE, SEEK_CUR);
+            if(lseek(fd, -BUF_SIZE, SEEK_CUR) == -1) {
+                perror("lseek error3: ");
+                return 0;
+            }
+            printCurrentLocation("after - BUF_SIZE", fd);
         }
+        fileSize -= BUF_SIZE;
+
+        // read file
         if(read(fd, buf, BUF_SIZE) > 0) {
             for(int i=BUF_SIZE-1; i >= 0; i--) {
                 if(buf[i] == '\n') {
                     newLinesRead++;
-                    // printf("*%d*", newLinesRead);
                     if(newLinesRead == num) {
                         offset = i;
+                        printf("offset: %d\n", offset);
                         break;
                     }
                 }
-                lseek(fd, -BUF_SIZE, SEEK_CUR);
-                // printf("%c", buf[i]);
             }
+            printCurrentLocation("after read", fd);
         }
-        if(newLinesRead == num) {
+
+        // move file pointer backward after reading
+        if(offset != 0) {
+            if(lseek(fd, -offset-1, SEEK_CUR) == -1) {
+                perror("lseek error4: ");
+                return 0;
+            }
+            printCurrentLocation("have offset", fd);
             break;
+        } else if(fileSize <= 0) {
+            if(lseek(fd, 0, SEEK_SET) == -1) {
+                perror("lseek error5: ");
+                return 0;
+            }
+            printCurrentLocation("not enough file", fd);
+            break;
+        } else {
+            if(lseek(fd, -BUF_SIZE, SEEK_CUR) == -1) {
+                perror("lseek error6: ");
+                return 0;
+            }
+            printCurrentLocation("keep moving", fd);
         }
     }
-
-    lseek(fd, -offset, SEEK_CUR);
-    while(read(fd, buf, BUF_SIZE) > 0) {
-        write(STDOUT_FILENO, buf, BUF_SIZE);
+    while(read(fd, buf2, BUF_SIZE) > 0) {
+        fflush(stdout);
+        write(1, buf2, BUF_SIZE);
     }
 
     // close file
