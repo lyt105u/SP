@@ -27,13 +27,15 @@ char ** parse(char *line) {
 	 *
 	 * Fill in code.
      */
-
+	token = strtok(line, delim);
 
   	/* Create array with room for first token.
   	 *
 	 * Fill in code.
 	 */
-
+	newArgv[count] = (int*)malloc(sizeof(token));
+	newArgv[count] = token;
+	count++;
 
   	/* While there are more tokens...
 	 *
@@ -43,12 +45,20 @@ char ** parse(char *line) {
 	 * 
   	 * Fill in code.
 	 */
-
+	while( token != NULL ) {   
+    	token = strtok(NULL, delim);
+		newArgv[count] = (int*)malloc(sizeof(token));
+		newArgv[count] = token;
+		count++;
+   	}
 
   	/* Null terminate the array and return it.
 	 *
   	 * Fill in code.
 	 */
+	for(int i=0; i<count-1; i++) {
+		printf("[%d] : %s\n", i, newArgv[i]);
+	}
 
   	return newArgv;
 }
