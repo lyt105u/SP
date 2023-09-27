@@ -9,6 +9,8 @@
 #include <stdlib.h>
 #include "shell.h"
 
+#define MAX_LINE 1024
+
 /* Parse a commandline string into an argv array. */
 char ** parse(char *line) {
 
@@ -33,7 +35,8 @@ char ** parse(char *line) {
   	 *
 	 * Fill in code.
 	 */
-	newArgv[count] = (int*)malloc(sizeof(token));
+	newArgv = (char**)malloc(sizeof(char*) * MAX_LINE);
+	newArgv[count] = (char*)malloc(sizeof(token));
 	newArgv[count] = token;
 	count++;
 
@@ -47,7 +50,7 @@ char ** parse(char *line) {
 	 */
 	while( token != NULL ) {   
     	token = strtok(NULL, delim);
-		newArgv[count] = (int*)malloc(sizeof(token));
+		newArgv[count] = (char*)malloc(sizeof(token));
 		newArgv[count] = token;
 		count++;
    	}
@@ -77,4 +80,12 @@ void free_argv(char **oldArgv) {
 	 *
 	 * Fill in code.
 	 */
+	
+	// for debugging
+	// int rowCnt = 0;
+	// while(oldArgv[rowCnt] != NULL) {
+	// 	rowCnt++;
+	// }
+
+	oldArgv = realloc(oldArgv, 0);
 }
