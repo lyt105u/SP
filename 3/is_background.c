@@ -4,6 +4,7 @@
 
 
 #include <stdio.h>
+#include <string.h>
 #include "shell.h"
 
 int is_background(char ** myArgv) {
@@ -18,5 +19,19 @@ int is_background(char ** myArgv) {
 	 *
 	 * Fill in code.
 	 */
+
+	// i is the string count of myArgv
+	int i = 0;
+	while(myArgv[i] != NULL) {
+		i++;
+	}
+
+	// '&' should be the last element in myArgv
+	if (strcmp(myArgv[i-1], "&") == 0) {
+		myArgv[i-1] = NULL;	// replace '&' with NULL
+		return TRUE;
+	}
+
+    return FALSE;
 
 }

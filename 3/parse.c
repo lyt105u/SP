@@ -80,12 +80,5 @@ void free_argv(char **oldArgv) {
 	 *
 	 * Fill in code.
 	 */
-	
-	// for debugging
-	// int rowCnt = 0;
-	// while(oldArgv[rowCnt] != NULL) {
-	// 	rowCnt++;
-	// }
-
 	oldArgv = realloc(oldArgv, 0);
 }

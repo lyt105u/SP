@@ -6,6 +6,7 @@
 #define LONGLINE 255
 
 #include <stdio.h>
+#include <stdlib.h>
 #include "shell.h"
 
 int main() {
