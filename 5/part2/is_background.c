@@ -4,18 +4,22 @@
 
 #include <stdio.h>
 #include "shell.h"
+#include <string.h>
 
 int is_background(char ** myArgv) {
-
   	if (*myArgv == NULL)
     	return 0;
 
-  	/* Look for "&" in myArgv, and process it.
-  	 *
-	 *	- Return TRUE if found.
-	 *	- Return FALSE if not found.
-	 *
-	 * Fill in code.
-	 */
+	int i = 0;
 
+	// "&" should be the last element
+	while(myArgv[i] != NULL) {
+		if(strcmp(myArgv[i], "&") == 0) {
+			myArgv[i-1] = NULL;	// replace '&' with NULL
+			return TRUE;	// "&" found
+		}
+		i++;
+	}
+
+	return FALSE;	// "&" not found
 }

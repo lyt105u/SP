@@ -85,12 +85,13 @@ char ** parse(char *line) {
  * Argv array is assumed created with parse() above.
  */
 void free_argv(char **oldArgv) {
-
 	int i = 0;
 
-	/* Free each string hanging off the array.
-	 * Free the oldArgv array itself.
-	 *
-	 * Fill in code.
-	 */
+	// Free each string hanging off the array.
+	while(oldArgv[i] != NULL) {
+        free(oldArgv[i++]);
+    }
+
+    // Free the oldArgv array itself.
+    free(oldArgv);
 }

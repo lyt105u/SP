@@ -6,6 +6,8 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <errno.h>
+#include <sys/types.h>
+#include <sys/wait.h>
 
 #include "shell.h"
 
@@ -18,8 +20,9 @@ void pipe_and_exec(char **myArgv) {
 	char **left_argv;
 	char **right_argv;
 
-  	switch (pipe_argv_index) {
+	pid_t pid;
 
+  	switch (pipe_argv_index) {
     	case -1:	/* Pipe at beginning or at end of argv;  See pipe_present(). */
       		fputs ("Missing command next to pipe in commandline.\n", stderr);
       		errno = EINVAL;	/* Note this is NOT shell exit. */
@@ -27,6 +30,25 @@ void pipe_and_exec(char **myArgv) {
 
     	case 0:	/* No pipe found in argv array or at end of argv array.
 			See pipe_present().  Exec with whole given argv array. */
+			pid = fork();
+			int fd;
+			if(pid == 0) {
+				fd = dup2(1, STDOUT_FILENO);
+				if (fd == -1) {
+					perror("dup2");
+					exit(errno);
+				}
+				if(execvp(myArgv[0], myArgv) == -1) {
+					perror("execvp");
+					exit(errno);
+				}
+			} else if(pid > 0) {
+				wait(NULL);
+			} else {
+				perror("fork");
+				exit(errno);
+			}
+
       		break;
 
     	default:	/* Pipe in the middle of argv array.  See pipe_present(). */
@@ -35,18 +57,27 @@ void pipe_and_exec(char **myArgv) {
        		 * Terminate first half of vector.
 			 *
        		 * Fill in code. */
+			left_argv = myArgv;
+            right_argv = &myArgv[pipe_argv_index + 1];
+            myArgv[pipe_argv_index] = NULL;
 
       		/* Create a pipe to bridge the left and right halves of the vector. 
 			 *
 			 * Fill in code. */
+			if(pipe(pipefds) == -1) {
+                perror("pipe");
+                exit(errno);
+            }
 
       		/* Create a new process for the right side of the pipe.
        		 * (The left side is the running "parent".)
        		 *
 			 * Fill in code to replace the underline. */
-      		switch(_______) {
-
+			pid = fork();
+      		switch(pid) {
         		case -1 :
+					perror("fork");
+					exit(errno);
 	  				break;
 
         		/* Talking parent.  Remember this is a child forked from shell. */
@@ -57,6 +88,15 @@ void pipe_and_exec(char **myArgv) {
 	 	 			 * - Exec the left command.
 					 *
 					 * Fill in code. */
+					close(pipefds[0]);					// Close the read end of the pipe for the parent.
+                    dup2(pipefds[1], STDOUT_FILENO);	// Redirect output of parent through the pipe.
+                    close(pipefds[1]);					// Close the write end of the pipe as it's duplicated to stdout.
+                    if(execvp(left_argv[0], left_argv) == -1) {
+						// Execute the left command.
+						perror("Execution failed");
+                    	exit(errno);
+					}	
+                    
 	  				break;
 
         		/* Listening child. */
@@ -67,10 +107,10 @@ void pipe_and_exec(char **myArgv) {
 				  	 * - Exec command on right side of pipe and recursively deal with other pipes
 					 *
 					 * Fill in code. */
-					 
-          			pipe_and_exec(&myArgv[pipe_argv_index+1]);
+					close(pipefds[1]);				// Close the write end of the pipe for the child.
+                    dup2(pipefds[0], STDIN_FILENO);	// Redirect input of the child through the pipe.
+                    close(pipefds[0]);				// Close the read end of the pipe as it's duplicated to stdin.
+                    pipe_and_exec(right_argv);		// Recursively deal with other pipes.
 			}
 	}
-	perror("Couldn't fork or exec child process");
-  	exit(errno);
 }

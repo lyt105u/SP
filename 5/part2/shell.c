@@ -22,8 +22,8 @@ int main(int argc, char* argv[]) {
         		do_builtin(myArgv);
 
 			/* Non-builtin command. */
-			// } else {		************************************************************註解記得拿掉
-			// 	run_command(myArgv);
+			} else {
+				run_command(myArgv);
 			}
 
 			/* Free argv array. */

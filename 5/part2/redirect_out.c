@@ -8,6 +8,8 @@
 #include "shell.h"
 #define STD_OUTPUT 1
 #define STD_INPUT  0
+#include <stdio.h>
+#include <string.h>
 
 /*
  * Look for ">" in myArgv, then redirect output to the file.
@@ -19,15 +21,32 @@ int redirect_out(char ** myArgv) {
 
   	/* search forward for >
   	 * Fill in code. */
+	while(myArgv[i] != NULL) {
+		if(strcmp(myArgv[i], ">") == 0) {
+			break;
+		}
+		i++;
+	}
 
   	if (myArgv[i]) {	/* found ">" in vector. */
+		// open file
+		fd = open(myArgv[i + 1], O_CREAT | O_WRONLY | O_TRUNC, 0644);
+        if (fd < 0) {
+            perror("open");
+            return -1;
+        }
 
-    	/* 1) Open file.
-    	 * 2) Redirect to use it for output.
-    	 * 3) Cleanup / close unneeded file descriptors.
-    	 * 4) Remove the ">" and the filename from myArgv.
-		 *
-    	 * Fill in code. */
+		// redirect to use fd for output
+		if (dup2(fd, STD_OUTPUT) < 0) {
+            perror("dup2");
+            return -1;
+        }
+
+		// close file descriptor and clean up
+		close(fd);
+
+		// remove ">" and the filename from myArgv
+		myArgv[i] = NULL;
   	}
   	return 0;
 }

@@ -9,6 +9,8 @@
 #include <sys/wait.h>
 #include "shell.h"
 #include <stdlib.h>
+#include <unistd.h>
+#include <string.h>
 
 void run_command(char **myArgv) {
   	pid_t pid;
@@ -20,6 +22,8 @@ void run_command(char **myArgv) {
    	* Do this before fork() as the "&" is removed from the argv array
    	* as a side effect.
    	*/
+
+   	// "&" should be the last element of myArgv
   	run_in_background = is_background(myArgv);
 
   	switch(pid = fork()) {
@@ -49,8 +53,16 @@ void run_command(char **myArgv) {
     	case 0 :
 
       		/* Redirect input and update argv. */
+			if(redirect_in(myArgv) == -1) {
+				fprintf(stderr, "Error in redirecting input\n");
+				exit(EXIT_FAILURE);
+			}
 
       		/* Redirect output and update argv. */
+			if(redirect_out(myArgv) == -1) {
+				fprintf(stderr, "Error in redirecting output\n");
+				exit(EXIT_FAILURE);
+			}
 
       		pipe_and_exec(myArgv);
       		exit(errno);

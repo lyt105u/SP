@@ -56,34 +56,73 @@ static struct cmd {
 
 static void bi_builtin(char ** argv) {
 	/* Fill in code. */
-	struct cmd *tableCommand;
-	for (tableCommand = inbuilts ; tableCommand->keyword != NULL; tableCommand++) {
-		if (strcmp(tableCommand->keyword,argv[1]) == 0) {
-      		printf("%s is a builtin feature.\n", argv[1]);
-			return;
-    	}
+	if(argv[1] == NULL) {
+		printf("builtin\n");
+		printf("echo\n");
+		printf("quit\n");
+		printf("exit\n");
+		printf("bye\n");
+		printf("logout\n");
+		printf("cd\n");
+		printf("pwd\n");
+		printf("id\n");
+		printf("hostname\n");
+	} else {
+		struct cmd *tableCommand;
+		for (tableCommand = inbuilts ; tableCommand->keyword != NULL; tableCommand++) {
+			if (strcmp(tableCommand->keyword,argv[1]) == 0) {
+				printf("%s is a builtin feature.\n", argv[1]);
+				return;
+			}
+		}
+		printf("%s is NOT a builtin feature.\n", argv[1]);
 	}
-	printf("%s is NOT a builtin feature.\n", argv[1]);
 }
 
 static void bi_cd(char **argv) {
 	/* Fill in code. */
+	if(chdir(argv[1]) != 0) {
+    	perror("chdir");
+    }
 }
 
 static void bi_echo(char **argv) {
 	/* Fill in code. */
+	printf("%s\n", argv[1]);
 }
 
 static void bi_hostname(char ** argv) {
 	/* Fill in code. */
+	char hostname[1024];
+    if (gethostname(hostname, sizeof(hostname)) == 0) {
+        printf("Hostname: %s\n", hostname);
+    } else {
+        perror("gethostname");
+	}
 }
 
 static void bi_id(char ** argv) {
  	/* Fill in code. */
+	int uid = getuid();
+	int gid = getgid();
+
+	struct passwd *user_info = getpwuid(uid);
+    struct group *group_info = getgrgid(gid);
+    if (user_info != NULL && group_info != NULL) {
+        printf("UserID = %d(%s), GroupID = %d(%s)\n", uid, user_info->pw_name, gid, group_info->gr_name);
+    } else {
+        printf("Can't retrieve user or group information.\n");
+    }
 }
 
 static void bi_pwd(char ** argv) {
 	/* Fill in code. */
+	char current_path[1024];
+    if (getcwd(current_path, sizeof(current_path)) != NULL) {
+        printf("%s\n", current_path);
+    } else {
+         perror("getcwd");
+    }
 }
 
 static void bi_quit(char **argv) {
