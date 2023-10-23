@@ -14,7 +14,6 @@ int main(int argc, char* argv[]) {
 
   	fputs("myshell -> ",stdout);
   	while (fgets(line,LONGLINE,stdin)) {
-
     	/* Create argv array based on commandline. */
     	if ((myArgv = parse(line))!= NULL) {
 
@@ -23,8 +22,8 @@ int main(int argc, char* argv[]) {
         		do_builtin(myArgv);
 
 			/* Non-builtin command. */
-			} else {
-				run_command(myArgv);
+			// } else {		************************************************************註解記得拿掉
+			// 	run_command(myArgv);
 			}
 
 			/* Free argv array. */

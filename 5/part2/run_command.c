@@ -8,6 +8,7 @@
 #include <errno.h>
 #include <sys/wait.h>
 #include "shell.h"
+#include <stdlib.h>
 
 void run_command(char **myArgv) {
   	pid_t pid;

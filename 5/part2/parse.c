@@ -21,33 +21,60 @@ char ** parse(char *line) {
     	return NULL;
   	}
 
-  	/* Init strtok with commandline, then get first token.
-     * Return NULL if no tokens in line.
-	 *
-	 * Fill in code.
-     */
+  	// Init strtok with commandline, then get first token.
+	// Return NULL if no tokens in line.
+	token = strtok(line, delim);
+	if(token == NULL) {
+        return NULL;
+    }
+
+  	// Create array with room for first token.
+	newArgv = (char **)malloc(sizeof(char *));
+    if(newArgv == NULL) {
+        perror("malloc");
+        exit(EXIT_FAILURE);
+    }
+
+	// Give the first token its own memory, then install it.
+	newArgv[count] = (char *)malloc(strlen(token) + 1);
+    if(newArgv[count] == NULL) {
+        perror("malloc");
+        exit(EXIT_FAILURE);
+    }
+	strcpy(newArgv[count++], token);
+
+	// While there are more tokens...
+	token = strtok(NULL, delim);
+	while(token != NULL) {
+		// Resize array.
+        newArgv = (char **)realloc(newArgv, (count + 1) * sizeof(char *));
+        if(newArgv == NULL) {
+            perror("realloc");
+            exit(EXIT_FAILURE);
+        }
+
+		// Give token its own memory, then install it.
+		if(token != NULL) {
+            newArgv[count] = (char *)malloc(strlen(token) + 1);
+            if(newArgv[count] == NULL) {
+                perror("malloc");
+                exit(EXIT_FAILURE);
+            }
+            strcpy(newArgv[count++], token);
+        }
+
+		// Get next token.
+		token = strtok(NULL, delim);
+	}
 
 
-  	/* Create array with room for first token.
-  	 *
-	 * Fill in code.
-	 */
-
-
-  	/* While there are more tokens...
-	 *
-	 *  - Get next token.
-	 *	- Resize array.
-	 *  - Give token its own memory, then install it.
-	 * 
-  	 * Fill in code.
-	 */
-
-
-  	/* Null terminate the array and return it.
-	 *
-  	 * Fill in code.
-	 */
+  	// Null terminate the array and return it.
+	newArgv = (char **)realloc(newArgv, (count + 1) * sizeof(char *));
+    if(newArgv == NULL) {
+        perror("realloc");
+        exit(EXIT_FAILURE);
+    }
+    newArgv[count] = NULL;
 
   	return newArgv;
 }

@@ -14,6 +14,7 @@
 #include <grp.h>
 #include <sys/utsname.h>
 #include "shell.h"
+#include <string.h>
 
 /****************************************************************************/
 /* builtin function definitions                                             */
@@ -55,6 +56,14 @@ static struct cmd {
 
 static void bi_builtin(char ** argv) {
 	/* Fill in code. */
+	struct cmd *tableCommand;
+	for (tableCommand = inbuilts ; tableCommand->keyword != NULL; tableCommand++) {
+		if (strcmp(tableCommand->keyword,argv[1]) == 0) {
+      		printf("%s is a builtin feature.\n", argv[1]);
+			return;
+    	}
+	}
+	printf("%s is NOT a builtin feature.\n", argv[1]);
 }
 
 static void bi_cd(char **argv) {
