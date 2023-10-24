@@ -18,9 +18,9 @@
 
 int main(int argc, char **argv) {
 	FILE *in;
-	FILE *out;        /* defaults */
+	FILE *out;
 	char line[BIGLINE];
-	static Dictrec dr, blank;
+	static Dictrec dr/*, blank*/;
 	
 	/* If args are supplied, argv[1] is for input, argv[2] for output */
 	if (argc==3) {
@@ -35,25 +35,31 @@ int main(int argc, char **argv) {
 	/* Main reading loop : read word first, then definition into dr */
 
 	/* Loop through the whole file. */
-	while (!feof(in)) {
+	// while (!feof(in)) {
+	while(fgets(line, BIGLINE, in) != NULL) {
 		
 		/* Create and fill in a new blank record.
 		 * First get a word and put it in the word field, then get the definition
 		 * and put it in the text field at the right offset.  Pad the unused chars
 		 * in both fields with nulls.
 		 */
+		line[strcspn(line, "\n")] = 0;	// remove newline character
+        strncpy(dr.word, line, WORD);	// Read word and put in record
+        dr.word[WORD - 1] = '\0';		// Truncate at the end of the "word" field
 
-		/* Read word and put in record.  Truncate at the end of the "word" field.
-		 *
-		 * Fill in code. */
+		strcpy(dr.text, ""); // initialize
+        while( (fgets(line,BIGLINE,in)!=NULL) && (strcmp(line,"\n")!=0) ) {	// possibly multiple lines
+            strcat(dr.text, line);
+        }
+		dr.text[strcspn(dr.text, "\n")] = 0;	// remove newline character
 
-		/* Read definition, line by line, and put in record.
-		 *
-		 * Fill in code. */
+		// Pad unused characters with nulls
+		for (int i = strlen(dr.text); i < TEXT; i++) {
+            dr.text[i] = '\0';
+        }
 
-		/* Write record out to file.
-		 *
-		 * Fill in code. */
+		// Write record out to file
+		fwrite(&dr, sizeof(Dictrec), 1, out);
 	}
 
 	fclose(in);

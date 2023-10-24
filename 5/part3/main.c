@@ -15,6 +15,7 @@
 #include <errno.h>
 #include <stdlib.h>
 #include "dict.h"
+#include <string.h>
 
 int main(int argc, char **argv) {
 	Dictrec tryit;
@@ -26,7 +27,8 @@ int main(int argc, char **argv) {
 
 	while(1) {
 		printf("What word do you want : ");
-		gets(tryit.word);
+		fgets(tryit.word, WORD, stdin);
+		tryit.word[strcspn(tryit.word, "\n")] = 0;
 		switch(lookup(&tryit,argv[1]) ) {
 			case FOUND:
 				printf("%s : %s\n",tryit.word,tryit.text);
