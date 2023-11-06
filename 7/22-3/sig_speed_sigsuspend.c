@@ -31,30 +31,34 @@
        wait for a signal from parent          send a signal to child
    }                                      }
 */
+#include <stdio.h>
 #include <signal.h>
-#include "tlpi_hdr.h"
+#include <stdlib.h>
+#include <string.h>
+#include <errno.h>
+#include <sys/types.h>
+#include <unistd.h>
 
-static void
-handler(int sig)
-{
-}
+static void handler(int sig) {}
 
 #define TESTSIG SIGUSR1
 
-int
-main(int argc, char *argv[])
-{
-    if (argc != 2 || strcmp(argv[1], "--help") == 0)
-        usageErr("%s num-sigs\n", argv[0]);
+int main(int argc, char *argv[]) {
+    if (argc != 2 || strcmp(argv[1], "--help") == 0) {
+        printf("Usage: %s num-sigs\n", argv[0]);
+        return 1;
+    }
 
-    int numSigs = getInt(argv[1], GN_GT_0, "num-sigs");
+    int numSigs = atoi(argv[1]);
 
     struct sigaction sa;
     sigemptyset(&sa.sa_mask);
     sa.sa_flags = 0;
     sa.sa_handler = handler;
-    if (sigaction(TESTSIG, &sa, NULL) == -1)
-        errExit("sigaction");
+    if (sigaction(TESTSIG, &sa, NULL) == -1) {
+        perror("sigaction");
+        exit(1);
+    }
 
     /* Block the signal before fork(), so that the child doesn't manage
        to send it to the parent before the parent is ready to catch it */
@@ -62,30 +66,42 @@ main(int argc, char *argv[])
     sigset_t blockedMask, emptyMask;
     sigemptyset(&blockedMask);
     sigaddset(&blockedMask, TESTSIG);
-    if (sigprocmask(SIG_SETMASK, &blockedMask, NULL) == -1)
-        errExit("sigprocmask");
+    if (sigprocmask(SIG_SETMASK, &blockedMask, NULL) == -1) {
+        perror("sigprocmask");
+        exit(1);
+    }
 
     sigemptyset(&emptyMask);
 
     pid_t childPid = fork();
     switch (childPid) {
-    case -1: errExit("fork");
+    case -1:
+        perror("fork");
+        exit(1);
 
     case 0:     /* child */
         for (int scnt = 0; scnt < numSigs; scnt++) {
-            if (kill(getppid(), TESTSIG) == -1)
-                errExit("kill");
-            if (sigsuspend(&emptyMask) == -1 && errno != EINTR)
-                    errExit("sigsuspend");
+            if (kill(getppid(), TESTSIG) == -1) {
+                perror("kill");
+                exit(1);
+            }
+            if (sigsuspend(&emptyMask) == -1 && errno != EINTR) {
+                perror("sigsuspend");
+                exit(1);
+            }
         }
         exit(EXIT_SUCCESS);
 
     default: /* parent */
         for (int scnt = 0; scnt < numSigs; scnt++) {
-            if (sigsuspend(&emptyMask) == -1 && errno != EINTR)
-                    errExit("sigsuspend");
-            if (kill(childPid, TESTSIG) == -1)
-                errExit("kill");
+            if (sigsuspend(&emptyMask) == -1 && errno != EINTR) {
+                perror("sigsuspend");
+                exit(1);
+            }
+            if (kill(childPid, TESTSIG) == -1) {
+                perror("kill");
+                exit(1);
+            }
         }
         exit(EXIT_SUCCESS);
     }

@@ -1,11 +1,13 @@
 CC = gcc
 CFLAGS = -Wall
 
-all: sig_speed_comparison
+all: sig_speed_sigsuspend sig_speed_sigwaitinfo
 
-sig_speed_comparison: sig_speed_comparison.c
-	$(CC) $(CFLAGS) -o sig_speed_comparison sig_speed_comparison.c
-	echo "usage: ./sig_speed_comparison num-sigs"
+sig_speed_sigsuspend: sig_speed_sigsuspend.c
+	$(CC) $(CFLAGS) -o sig_speed_sigsuspend sig_speed_sigsuspend.c
+
+sig_speed_sigwaitinfo: sig_speed_sigwaitinfo.c
+	$(CC) $(CFLAGS) -o sig_speed_sigwaitinfo sig_speed_sigwaitinfo.c
 
 clean:
-	rm -f sig_speed_comparison
+	rm -f sig_speed_sigsuspend sig_speed_sigwaitinfo
