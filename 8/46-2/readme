@@ -1,0 +1,3 @@
+Usage:
+./svmsg_file_server
+./svmsg_file_client [seq-len]
