@@ -1,0 +1,4 @@
+Usage:
+./fifo_seqnum_server
+./fifo_seqnum_client [seq-len]
+./fifo_seqnum_client_bad [seq-len]
