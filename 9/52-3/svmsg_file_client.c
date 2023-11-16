@@ -1,101 +1,74 @@
-/*************************************************************************\
-*                  Copyright (C) Michael Kerrisk, 2020.                   *
-*                                                                         *
-* This program is free software. You may use, modify, and redistribute it *
-* under the terms of the GNU General Public License as published by the   *
-* Free Software Foundation, either version 3 or (at your option) any      *
-* later version. This program is distributed without any warranty.  See   *
-* the file COPYING.gpl-v3 for details.                                    *
-\*************************************************************************/
-
-/* Listing 46-9 */
-
-#include "svmsg_file.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <mqueue.h>
+#include <fcntl.h>
 
-static int clientId;
+#define SERVER_QUEUE_NAME   "/server_queue"
+#define CLIENT_QUEUE_NAME   "/client_queue"
+#define QUEUE_PERMISSIONS   0660
+#define MAX_MESSAGES        10
+#define MAX_MSG_SIZE        512
+#define MSG_BUFFER_SIZE     (MAX_MSG_SIZE + 10)
 
-void errExit(char *err) {
-    perror(err);
-    return;
-}
-
-static void
-removeQueue(void)
-{
-    if (msgctl(clientId, IPC_RMID, NULL) == -1)
-        errExit("msgctl");
-}
-
-int
-main(int argc, char *argv[])
-{
-    struct requestMsg req;
-    struct responseMsg resp;
-    int serverId, numMsgs;
-    ssize_t msgLen, totBytes;
+int main(int argc, char *argv[]) {
+    mqd_t qd_server, qd_client;   // Queue descriptors
+    struct mq_attr attr;
+    char in_buffer[MSG_BUFFER_SIZE];
+    char out_buffer[MSG_BUFFER_SIZE];
 
     if (argc != 2 || strcmp(argv[1], "--help") == 0) {
-        printf("%s pathname\n", argv[0]);
+        printf("%s <pathname>\n", argv[0]);
         return 1;
     }
 
-    if (strlen(argv[1]) > sizeof(req.pathname) - 1) {
-        printf("pathname too long (max: %ld bytes)\n", (long) sizeof(req.pathname) - 1);
+    if (strlen(argv[1]) > MSG_BUFFER_SIZE - 1) {
+        printf("<pathname> too long (max: %d bytes)\n", MSG_BUFFER_SIZE - 1);
         return 1;
     }
-        
 
-    /* Get server's queue identifier; create queue for response */
-
-    serverId = msgget(SERVER_KEY, S_IWUSR);
-    if (serverId == -1)
-        errExit("msgget - server message queue");
-
-    clientId = msgget(IPC_PRIVATE, S_IRUSR | S_IWUSR | S_IWGRP);
-    if (clientId == -1)
-        errExit("msgget - client message queue");
-
-    if (atexit(removeQueue) != 0)
-        errExit("atexit");
-
-    /* Send message asking for file named in argv[1] */
-
-    req.mtype = 1;                      /* Any type will do */
-    req.clientId = clientId;
-    strncpy(req.pathname, argv[1], sizeof(req.pathname) - 1);
-    req.pathname[sizeof(req.pathname) - 1] = '\0';
-                                        /* Ensure string is terminated */
-
-    if (msgsnd(serverId, &req, REQ_MSG_SIZE, 0) == -1)
-        errExit("msgsnd");
-
-    /* Get first response, which may be failure notification */
-
-    msgLen = msgrcv(clientId, &resp, RESP_MSG_SIZE, 0, 0);
-    if (msgLen == -1)
-        errExit("msgrcv");
-
-    if (resp.mtype == RESP_MT_FAILURE) {
-        printf("%s\n", resp.data);      /* Display msg from server */
-        exit(EXIT_FAILURE);
+    // Create the client queue for receiving messages from server
+    attr.mq_flags = 0;
+    attr.mq_maxmsg = MAX_MESSAGES;
+    attr.mq_msgsize = MAX_MSG_SIZE;
+    attr.mq_curmsgs = 0;
+    qd_client = mq_open(CLIENT_QUEUE_NAME, O_RDONLY | O_CREAT, QUEUE_PERMISSIONS, &attr);
+    if (qd_client == -1) {
+        perror("Client: mq_open (client)");
+        exit(1);
+    }
+    
+    // Open the server queue for sending messages
+    qd_server = mq_open(SERVER_QUEUE_NAME, O_WRONLY);
+    if (qd_server == -1) {
+        perror("Client: mq_open (server)");
+        exit(1);
     }
 
-    /* File was opened successfully by server; process messages
-       (including the one already received) containing file data */
-
-    totBytes = msgLen;                  /* Count first message */
-    for (numMsgs = 1; resp.mtype == RESP_MT_DATA; numMsgs++) {
-        msgLen = msgrcv(clientId, &resp, RESP_MSG_SIZE, 0, 0);
-        if (msgLen == -1)
-            errExit("msgrcv");
-
-        totBytes += msgLen;
+    // Send message to server
+    snprintf(out_buffer, MSG_BUFFER_SIZE, "%s", argv[1]);
+    if (mq_send(qd_server, out_buffer, strlen(out_buffer) + 1, 0) == -1) {
+        perror("Client: mq_send");
+        exit(1);
+    }
+    
+    // Receive the response from the server
+    if (mq_receive(qd_client, in_buffer, MSG_BUFFER_SIZE, NULL) == -1) {
+        perror("Client: mq_receive");
+        exit(1);
     }
 
-    printf("Received %ld bytes (%d messages)\n", (long) totBytes, numMsgs);
+    printf("Client: message received from server:\n");
+    if(strncmp(in_buffer, "Couldn't open", sizeof("Couldn't open"))) {
+        printf("%s\n", in_buffer);
+    } else {
+        printf("%ld bytes\n", strlen(in_buffer));
+    }
+
+    // Cleanup
+    mq_close(qd_client);
+    mq_unlink(CLIENT_QUEUE_NAME);
+    mq_close(qd_server);
 
     exit(EXIT_SUCCESS);
 }

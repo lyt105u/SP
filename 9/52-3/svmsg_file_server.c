@@ -1,4 +1,4 @@
-#include "svmsg_file.h"
+// #include "svmsg_file.h"
 #include <stdio.h>
 #include <errno.h>
 #include <stdlib.h>
@@ -9,123 +9,100 @@
 #include <fcntl.h>           /* For O_* constants */
 #include <sys/stat.h>        /* For mode constants */
 
-// SIGCHLD handler
-static void grimReaper(int sig) {
-    int savedErrno;
+#include <signal.h>
 
-    savedErrno = errno;                 /* waitpid() might change 'errno' */
-    while (waitpid(-1, NULL, WNOHANG) > 0)
-        continue;
-    errno = savedErrno;
+#define SERVER_QUEUE_NAME   "/server_queue"
+#define CLIENT_QUEUE_NAME   "/client_queue"
+#define QUEUE_PERMISSIONS   0660
+#define MAX_MESSAGES        10
+#define MAX_MSG_SIZE        512
+#define MSG_BUFFER_SIZE     (MAX_MSG_SIZE + 10)
+
+mqd_t qd_server; // queue descriptor
+
+// handler for Ctrl+C or Ctrl+Z
+void handler(int sig) {
+    printf("\nCaught signal SIGINT (Ctrl+C or Ctrl+Z)\n");
+    mq_close(qd_server);
+    mq_unlink(SERVER_QUEUE_NAME);
+    exit(0);
 }
 
-// Executed in child process: serve a single client
-static void serveRequest(const struct requestMsg *req) {
+// send to client
+static void serveRequest(char *in_buf) {
+    mqd_t qd_client;
     int fd;
+    char out_buf[MSG_BUFFER_SIZE] = {0};
     ssize_t numRead;
-    struct responseMsg resp;
 
-    fd = open(req->pathname, O_RDONLY);
-    if (fd == -1) {                     /* Open failed: send error text */
-        resp.mtype = RESP_MT_FAILURE;
-        snprintf(resp.data, sizeof(resp.data), "%s", "Couldn't open");
-        // msgsnd(req->clientId, &resp, strlen(resp.data) + 1, 0);
-        int status = mq_send(req->clientId, &resp, strlen(&resp), 0);
-        if (status == -1) {
-            perror("mq_send");
-            exit(1);
-        }
-        exit(EXIT_FAILURE);             /* and terminate */
+    // Open the client queue
+    qd_client = mq_open(CLIENT_QUEUE_NAME, O_WRONLY);
+    if (qd_client == -1) {
+        perror("Server: Not able to open client queue");
+        return;
     }
 
-    /* Transmit file contents in messages with type RESP_MT_DATA. We don't
-       diagnose read() and msgsnd() errors since we can't notify client. */
+    fd = open(in_buf, O_RDONLY);
+    if (fd == -1) {
+        snprintf(out_buf, sizeof(out_buf), "Couldn't open %s", in_buf);
+        
+        // Send response message to client
+        if (mq_send(qd_client, out_buf, strlen(out_buf) + 1, 0) == -1) {
+            perror("Server: mq_send");
+        }
+        exit(EXIT_FAILURE);
+    }
 
-    resp.mtype = RESP_MT_DATA;
-    while ((numRead = read(fd, resp.data, RESP_MSG_SIZE)) > 0)
-        // if (msgsnd(req->clientId, &resp, numRead, 0) == -1)
-        if(mq_send(req->clientId, &resp, numRead, 0))
-            break;
-
-    /* Send a message of type RESP_MT_END to signify end-of-file */
-
-    resp.mtype = RESP_MT_END;
-    // msgsnd(req->clientId, &resp, 0, 0);         /* Zero-length mtext */
-    mq_send(req->clientId, &resp, 0, 0);
+    while ((numRead = read(fd, out_buf, MSG_BUFFER_SIZE)) > 0) {
+        if (mq_send(qd_client, out_buf, strlen(out_buf) + 1, 0) == -1) {
+            perror("Server: mq_send");
+        }
+    }
 }
 
-void errExit(char *err) {
-    perror(err);
-    return;
-}
-
-void errMsg(char *err) {
-    printf("%s\n", err);
-}
-
-int
-main(int argc, char *argv[])
-{
-    struct requestMsg req;
+int main(int argc, char *argv[]) {
     pid_t pid;
-    ssize_t msgLen;
-    int serverId;
-    struct sigaction sa;
-
     struct mq_attr attr;
+    char in_buf[MSG_BUFFER_SIZE] = {0};
 
-    /* Create server message queue */
-
-    // serverId = msgget(SERVER_KEY, IPC_CREAT | IPC_EXCL |
-    //                         S_IRUSR | S_IWUSR | S_IWGRP);
-    // if (serverId == -1)
-    //     errExit("msgget");
-    serverId = mq_open(SERVER_KEY, O_CREAT | O_RDWR, 0644, NULL);
-    if (serverId == (mqd_t)-1) {
-        perror("mq_open");
+    // Register signal handlers
+    signal(SIGINT, handler);    // Ctrl+C
+    signal(SIGTSTP, handler);   // Ctrl+Z
+    
+    // Create the server queue
+    attr.mq_flags = 0;
+    attr.mq_maxmsg = MAX_MESSAGES;
+    attr.mq_msgsize = MAX_MSG_SIZE;
+    attr.mq_curmsgs = 0;
+    qd_server = mq_open(SERVER_QUEUE_NAME, O_RDONLY | O_CREAT, QUEUE_PERMISSIONS, &attr);
+    if (qd_server == -1) {
+        perror("Server: mq_open (server)");
         exit(1);
     }
-
-    /* Establish SIGCHLD handler to reap terminated children */
-
-    sigemptyset(&sa.sa_mask);
-    sa.sa_flags = SA_RESTART;
-    sa.sa_handler = grimReaper;
-    if (sigaction(SIGCHLD, &sa, NULL) == -1)
-        errExit("sigaction");
-
+    
     /* Read requests, handle each in a separate child process */
-
     for (;;) {
-        // msgLen = msgrcv(serverId, &req, REQ_MSG_SIZE, 0, 0);
-        mq_getattr(serverId, &req);
-        char buffer[1024];
-        ssize_t bytes_read = mq_receive(req, buffer, attr.mq_msgsize, NULL);
-
-        if (msgLen == -1) {
-            if (errno == EINTR)         /* Interrupted by SIGCHLD handler? */
-                continue;               /* ... then restart msgrcv() */
-            errMsg("msgrcv");           /* Some other error */
-            break;                      /* ... so terminate loop */
+        // Get the next message from the queue
+        if (mq_receive(qd_server, in_buf, MSG_BUFFER_SIZE, NULL) == -1) {
+            perror("Server: mq_receive");
+            continue;
         }
+        printf("Server: message received: %s\n", in_buf);
 
-        pid = fork();                   /* Create child process */
+        pid = fork();
         if (pid == -1) {
-            errMsg("fork");
+            perror("fork");
             break;
         }
 
-        if (pid == 0) {                 /* Child handles request */
-            serveRequest(&req);
+        if (pid == 0) {
+            // child handles request
+            serveRequest(in_buf);
             _exit(EXIT_SUCCESS);
         }
-
-        /* Parent loops to receive next client request */
     }
 
-    /* If msgrcv() or fork() fails, remove server MQ and exit */
-
-    if (msgctl(serverId, IPC_RMID, NULL) == -1)
-        errExit("msgctl");
+    mq_close(qd_server);
+    mq_unlink(SERVER_QUEUE_NAME);
     exit(EXIT_SUCCESS);
 }

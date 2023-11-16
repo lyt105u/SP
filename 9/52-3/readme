@@ -1,0 +1,4 @@
+POSIX message queue
+Usage:
+server: ./svmsg_file_server
+client: ./svmsg_file_client <pathname>
