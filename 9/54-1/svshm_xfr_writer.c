@@ -50,10 +50,6 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    int value;
-    sem_getvalue(sem, &value);
-    printf("Semaphore value: %d\n", value);
-
     // create shared memory
     // shmid = shmget(SHM_KEY, sizeof(struct shmseg), IPC_CREAT | OBJ_PERMS);
     // if (shmid == -1)
@@ -64,14 +60,18 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
+
+    // set memory size
+    ftruncate(fd, sizeof(struct shmseg));
+
     // shmaat = shared memory attach
     // shmp = shared memory pointer
     // shmp = shmat(shmid, NULL, 0);
     // if (shmp == (void *) -1)
     //     errExit("shmat");
 
-    // map shared memory object
-    shmp = mmap(NULL, sizeof(struct shmseg), PROT_READ, MAP_SHARED, fd, 0);
+    // mapping
+    shmp = mmap(NULL, sizeof(struct shmseg), PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
     if (shmp == MAP_FAILED) {
         perror("mmap");
         return 1;
@@ -88,7 +88,6 @@ int main(int argc, char *argv[]) {
             perror("sem_wait");
             return 1;
         }
-        printf("writer pass sem\n");
 
         // shmp->cnt = read(STDIN_FILENO, shmp->buf, 1024);
         // if (shmp->cnt == -1) {
@@ -99,7 +98,6 @@ int main(int argc, char *argv[]) {
             perror("fgets");
             return 1;
         }
-        printf("%s\n", shmp->buf);
         shmp->cnt = strlen(shmp->buf);
 
         // if (releaseSem(semid, READ_SEM) == -1)          /* Give reader a turn */
@@ -112,7 +110,8 @@ int main(int argc, char *argv[]) {
         /* Have we reached EOF? We test this after giving the reader
            a turn so that it can see the 0 value in shmp->cnt. */
 
-        if (strcmp(shmp->buf, "quit") == 0)
+        if (strcmp(shmp->buf, "quit\n") == 0)
+            shmp->cnt = 0;
             break;
     }
 

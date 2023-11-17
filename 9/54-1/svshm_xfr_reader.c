@@ -25,11 +25,15 @@ int main(int argc, char *argv[]) {
     // semid = semget(SEM_KEY, 0, 0);
     // if (semid == -1)
     //     errExit("semget");
-    sem = sem_open(SEM_NAME, O_CREAT, 0644, 0); // ignored if semaphore already exists
+    sem = sem_open(SEM_NAME, 0); // ignored if semaphore already exists
     if(sem == SEM_FAILED) {
         perror("sem_open");
         return 1;
     }
+
+    int value;
+    sem_getvalue(sem, &value);
+    printf("Semaphore value: %d\n", value);
 
     // shmid  = shmget(SHM_KEY, 0, 0);
     // if (shmid == -1)
@@ -39,6 +43,7 @@ int main(int argc, char *argv[]) {
         perror("shm_open");
         return 1;
     }
+    ftruncate(fd, sizeof(struct shmseg));
 
     // shmp = shmat(shmid, NULL, SHM_RDONLY);
     // if (shmp == (void *) -1)
@@ -89,6 +94,11 @@ int main(int argc, char *argv[]) {
     //     errExit("releaseSem");
     if(sem_post(sem) == -1) {
         perror("sem_post");
+        return 1;
+    }
+
+    if(sem_close(sem) == -1) {
+        perror("sem_close");
         return 1;
     }
 
