@@ -59,7 +59,7 @@ int main(int argc, char *argv[]) {
     }
 
     printf("Client: message received from server:\n");
-    if(strncmp(in_buffer, "Couldn't open", sizeof("Couldn't open"))) {
+    if(strncmp(in_buffer, "Couldn't open", sizeof("Couldn't open")) == 0) {
         printf("%s\n", in_buffer);
     } else {
         printf("%ld bytes\n", strlen(in_buffer));
