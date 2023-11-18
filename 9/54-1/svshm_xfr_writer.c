@@ -23,21 +23,6 @@ int main(int argc, char *argv[]) {
     int fd;
 
     // create semaphore
-    // semid = semget(SEM_KEY, 2, IPC_CREAT | OBJ_PERMS);
-    // if (semid == -1)
-    //     errExit("semget");
-
-    // if (initSemAvailable(semid, WRITE_SEM) == -1)
-    //     errExit("initSemAvailable");
-    // if (initSemInUse(semid, READ_SEM) == -1)
-    //     errExit("initSemInUse");
-
-    // sem = sem_open(SEM_NAME, O_CREAT, 0644, 1);
-    // if(sem == SEM_FAILED) {
-    //     perror("sem_open");
-    //     return 1;
-    // }
-
     // If semaphore exists, delete it and create a new one to reset value.
     sem = sem_open(SEM_NAME, 0);
     if (sem != SEM_FAILED) {
@@ -51,9 +36,6 @@ int main(int argc, char *argv[]) {
     }
 
     // create shared memory
-    // shmid = shmget(SHM_KEY, sizeof(struct shmseg), IPC_CREAT | OBJ_PERMS);
-    // if (shmid == -1)
-    //     errExit("shmget");
     fd = shm_open(SHM_NAME, O_CREAT | O_RDWR, 0666);
     if(fd == -1) {
         perror("shm_open");
@@ -64,12 +46,6 @@ int main(int argc, char *argv[]) {
     // set memory size
     ftruncate(fd, sizeof(struct shmseg));
 
-    // shmaat = shared memory attach
-    // shmp = shared memory pointer
-    // shmp = shmat(shmid, NULL, 0);
-    // if (shmp == (void *) -1)
-    //     errExit("shmat");
-
     // mapping
     shmp = mmap(NULL, sizeof(struct shmseg), PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
     if (shmp == MAP_FAILED) {
@@ -77,56 +53,49 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    /* Transfer blocks of data from stdin to shared memory */
+    // int value;
+    // sem_getvalue(sem, &value);
+    // printf("Semaphore value: %d\n", value);
 
+    /* Transfer blocks of data from stdin to shared memory */
     // xfrs = transfers (the number of times the transfer happened?)
+    printf("type in messages, and type \"quit\" to quit.\n");
     for (xfrs = 0, bytes = 0; ; xfrs++, bytes += shmp->cnt) {
         /* Wait for our turn */
-        // if (reserveSem(semid, WRITE_SEM) == -1)
-        //     errExit("reserveSem");
         if (sem_wait(sem) == -1) {
             perror("sem_wait");
             return 1;
         }
 
-        // shmp->cnt = read(STDIN_FILENO, shmp->buf, 1024);
-        // if (shmp->cnt == -1) {
-        //     perror("read");
-        //     return 1;
-        // }
         if(fgets(shmp->buf, sizeof(shmp->buf), stdin) == NULL) {
             perror("fgets");
             return 1;
         }
-        shmp->cnt = strlen(shmp->buf);
+        if(strcmp(shmp->buf, "quit\n") == 0) {
+            shmp->cnt = 0;
+        } else {
+            shmp->cnt = strlen(shmp->buf);
+        }
 
-        // if (releaseSem(semid, READ_SEM) == -1)          /* Give reader a turn */
-        //     errExit("releaseSem");
         if(sem_post(sem) == -1) {
             perror("sem_post");
             return 1;
         }
 
-        /* Have we reached EOF? We test this after giving the reader
-           a turn so that it can see the 0 value in shmp->cnt. */
+        usleep(1);
 
-        if (strcmp(shmp->buf, "quit\n") == 0)
-            shmp->cnt = 0;
+        if(shmp->cnt == 0) {
             break;
+        }
     }
 
-    /* Wait until reader has let us have one more turn. We then know
-       reader has finished, and so we can delete the IPC objects. */
+    /* Wait until reader has let us have one more turn. We then know reader has finished, and so we can delete the IPC objects. */
 
-    // if (reserveSem(semid, WRITE_SEM) == -1)
-    //     errExit("reserveSem");
     if (sem_wait(sem) == -1) {
         perror("sem_wait");
         return 1;
     }
 
-    // if (semctl(semid, 0, IPC_RMID, dummy) == -1)
-    //     errExit("semctl");
     if(sem_close(sem) == -1) {
         perror("sem_close");
         return 1;
@@ -135,14 +104,12 @@ int main(int argc, char *argv[]) {
         perror("sem_unlink");
         return 1;
     }
-    // if (shmdt(shmp) == -1)
-    //     errExit("shmdt");
+
     if( munmap(shmp, sizeof(struct shmseg)) == -1) {
         perror("munmap");
         return 1;
     }
-    // if (shmctl(shmid, IPC_RMID, 0) == -1)
-    //     errExit("shmctl");
+
     if(close(fd) == -1) {
         perror("close");
         return 1;

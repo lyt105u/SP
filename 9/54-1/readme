@@ -1,0 +1,3 @@
+Usage: (remember to execute writer first)
+./svshm_xfr_writer
+./svshm_xfr_reader
