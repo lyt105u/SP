@@ -1,0 +1,3 @@
+Usage:
+./prodConShm <data_count> <transmission_frequency> <consumer_count> <buffer_size>
+ex: ./prodConShm 1000 1000 1000 3
