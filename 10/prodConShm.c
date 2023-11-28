@@ -61,7 +61,7 @@ int main(int argc, char **argv) {
         close(shm_fd);
         return 1;
     }
-    shared_mem->rows = B;
+    shared_mem->rows = 0;
 
     struct sigaction sa;
     memset(&sa, 0, sizeof(sa));
@@ -127,7 +127,7 @@ int main(int argc, char **argv) {
         waitpid(pids[i], NULL, 0);
     }
 
-    printf("\nM = %d, R = %d μs, N = %d\n", M, R, N);
+    printf("\nM = %d, R = %d μs, N = %d, B = %d\n", M, R, N, B);
     printf("----------------------------------------------------------------\n");
     printf("Total messages: %d\n", M *N);
     printf("Sum of received messages by all consumers: %d\n", shared_mem->rows);
