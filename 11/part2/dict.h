@@ -26,7 +26,7 @@ typedef struct {
   char text[TEXT];
 } Dictrec;
 
-int lookup(Dictrec * ,const char *);
+int lookup(char * ,const char *);
 
 /* used in fifo and message queue examples */
 typedef struct {
