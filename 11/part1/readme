@@ -1,0 +1,9 @@
+TCP AF_UNIX sockets
+
+Usage:
+    ./usock_server fixrec TUNNEL &
+    ./usock_client TUNNEL
+
+Other commands:
+    jobs: view the running jobs and their sequence number
+    kill %1: kill the job(1 means its sequence number, modify if needed)
