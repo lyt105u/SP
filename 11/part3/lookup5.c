@@ -13,45 +13,55 @@
 
 #include "dict.h"
 
-/*
- * This obscure looking function will be useful with bsearch
- * It compares a word with the word part of a Dictrec
- */
+int lookup(char * buffer, const char * resource) {
+	FILE *file;
+	char word[WORD];
+    char definition[TEXT];
+    int ch, i;
 
-int dict_cmp(const void *a,const void *b) {
-    return strcmp((char *)a,((Dictrec *)b)->word);
-}
+	file = fopen(resource, "r");
+    if (file == NULL) {
+        perror("Error in opening file");
+        return(-1);
+    }
 
-int lookup(Dictrec * sought, const char * resource) {
-	static Dictrec * table;
-	static int numrec;
-	Dictrec * found;
-	static int first_time = 1;
+	while (!feof(file)) {
+        // Read word
+        i = 0;
+        while ((ch = fgetc(file)) != '\0' && ch != EOF && i < WORD - 1) {
+            word[i++] = ch;
+        }
+        word[i] = '\0';
 
-	if (first_time) {  /* table ends up pointing at mmap of file */
-		int fd;
-		long filsiz;
+        // Skip null characters
+        while ((ch = fgetc(file)) == '\0' && ch != EOF);
 
-		first_time = 0;
+        // Read definition
+        i = 0;
+        if (ch != EOF) {
+            ungetc(ch, file); // Put back the last non-null character read
+            while ((ch = fgetc(file)) != '\n' && ch != EOF && i < TEXT - 1) {
+                definition[i++] = ch;
+            }
+            definition[i] = '\0';
+        }
 
-		/* Open the dictionary.
-		 * Fill in code. */
 
-		/* Get record count for building the tree. */
-		filsiz = lseek(fd,0L,SEEK_END);
-		numrec = filsiz / sizeof(Dictrec);
+        // Check if the word matches
+        if (strcmp(word, buffer) == 0) {
+			strcpy(buffer, definition);
+            fclose(file);
+            return FOUND;
+        }
 
-		/* mmap the data.
-		 * Fill in code. */
-		close(fd);
-	}
+        // Skip remaining null characters before next word
+        while ((ch = fgetc(file)) == '\0' && ch != EOF);
+        if (ch != EOF) {
+            ungetc(ch, file); // Reset for reading the next word
+        }
+    }
     
-	/* search table using bsearch
-	 * Fill in code. */
-	if (found) {
-		strcpy(sought->text,found->text);
-		return FOUND;
-	}
-
+	strcpy(buffer, "XXXX");
+	fclose(file);
 	return NOTFOUND;
 }

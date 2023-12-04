@@ -8,28 +8,55 @@
 #include <sys/socket.h>
 #include <netdb.h>
 #include <netinet/in.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <arpa/inet.h>
+
 #include "dict.h"
 
-int lookup(Dictrec * sought, const char * resource) {
+int lookup(char * buffer, const char * resource) {
 	static int sockfd;
 	static struct sockaddr_in server;
-	struct hostent *host;
 	static int first_time = 1;
+	char server_ip[16];
 
 	if (first_time) {  /* Set up server address & create local UDP socket */
 		first_time = 0;
 
-		/* Set up destination address.
-		 * Fill in code. */
+		// Set up destination address.
+		if( strcmp(resource, "localhost") == 0 ) {
+			strcpy(server_ip, "127.0.0.1");
+		} else {
+			strcpy(server_ip, resource);
+		}
 
-		/* Allocate a socket.
-		 * Fill in code. */
+		// Creating socket file descriptor
+		if ((sockfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
+			perror("socket creation failed");
+			exit(EXIT_FAILURE);
+		}
+
+		// Allocate a socket.
+		memset(&server, 0, sizeof(server));
+
+		// Filling server information
+		server.sin_family = AF_INET;
+		server.sin_port = htons(PORT);
+		server.sin_addr.s_addr = inet_addr(server_ip);
 	}
 
-	/* Send a datagram & await reply
-	 * Fill in code. */
+	// Send a datagram & await reply
+	sendto(sockfd, (const char *)buffer, strlen(buffer), MSG_CONFIRM, (const struct sockaddr *) &server, sizeof(server));
 
-	if (strcmp(sought->text,"XXXX") != 0) {
+	// Receiving response from server
+    int n;
+    socklen_t len = sizeof(server);
+    n = recvfrom(sockfd, (char *)buffer, TEXT, MSG_WAITALL, (struct sockaddr *) &server, &len);
+    buffer[n] = '\0';
+
+	if (strcmp(buffer,"XXXX") != 0) {
 		return FOUND;
 	}
 

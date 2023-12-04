@@ -1,0 +1,9 @@
+UDP AF_INET sockets
+
+Usage:
+    ./udp_server fixrec &
+    ./udp_client localhost
+
+Other commands:
+    jobs: view the running jobs and their sequence number
+    kill %1: kill the job(1 means its sequence number, modify if needed)
