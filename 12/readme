@@ -1,0 +1,3 @@
+use nftw() to record directory logs
+
+usage: ./demo_inotify <path>
